@@ -17,13 +17,25 @@ import os
 load_dotenv()
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 
-TESTING_GUILD_ID = 1139405183810551948
+TESTING_GUILD_ID = [1216211610960396388, 1139405183810551948]
 
 intents = nextcord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(intents=intents, default_guild_ids=[TESTING_GUILD_ID])
+bot = commands.Bot(intents=intents, default_guild_ids=TESTING_GUILD_ID)
 
 loot_tracker = LootTrackerDB()
+
+
+@bot.event
+async def on_ready():
+    for id in TESTING_GUILD_ID:
+        guild = bot.get_guild(id)
+        if guild:
+            await guild.delete_application_commands()
+            print("Deleted old commands.")
+            await bot.sync_all_application_commands()
+            print("Commands synced successfully!")
+    loot_tracker.create_tables()
 
 
 async def process_loot_message(
@@ -90,10 +102,10 @@ async def process_loot_message(
         if str(reaction.emoji) == "✅":
             for loot in res:
                 loot_tracker.add_loot_with_participants(
-                    loot, user_participants, loot_tracker.get_current_cycle()
+                    loot, user_participants, loot_tracker.get_current_week()
                 )
             sheets_helper.add_loot_to_sheet(
-                loot_tracker.get_current_cycle(), user_participants, res
+                loot_tracker.get_current_week(), user_participants, res
             )
             await message.channel.send(
                 "Great! The data has been saved.", delete_after=10
@@ -107,55 +119,49 @@ async def process_loot_message(
 
 
 @bot.event
-async def on_ready():
-    guild = bot.get_guild(TESTING_GUILD_ID)
-    if guild:
-        await guild.delete_application_commands()
-        print("Deleted old commands.")
-        await bot.sync_all_application_commands()
-        print("Commands synced successfully!")
-
-
-@bot.event
 async def on_message(message: nextcord.Message):
     if message.author.bot:
         return
 
-    if message.attachments:
-        for attachment in message.attachments:
-            if attachment.content_type and "image" in attachment.content_type:
-                loading = await message.channel.send(
-                    "<a:1792loading:1314611528795684874>  Processing request. Please wait for a moment!  "
-                    "<a:1792loading:1314611528795684874>"
-                )
+    channels = [1139405184339017761]
+    if message.channel.id in channels:
+        if message.attachments:
+            for attachment in message.attachments:
+                if attachment.content_type and "image" in attachment.content_type:
+                    loading = await message.channel.send(
+                        "<a:1792loading:1314611528795684874>  Processing request. Please wait for a moment!  "
+                        "<a:1792loading:1314611528795684874>"
+                    )
 
-                cv = upload_image_and_get_cv(attachment.url)
-                res = parse_cv_result_into_loots(cv)
+                    cv = upload_image_and_get_cv(attachment.url)
+                    res = parse_cv_result_into_loots(cv)
 
-                await loading.delete()
+                    await loading.delete()
 
-                sheets_helper = GoogleSheetsHelper(
-                    credentials_path="cat-heroes-443916-c29b27de5dae.json",
-                    spreadsheet_name="Loot Tracker",
-                )
-                await process_loot_message(message, res, sheets_helper)
-
-
-@bot.slash_command(description="Start a new loot cycle", guild_ids=[TESTING_GUILD_ID])
-async def start_cycle(interaction: nextcord.Interaction):
-    new_cycle_id = loot_tracker.start_new_cycle()
-    await interaction.response.send_message(f"New cycle started: Cycle {new_cycle_id}")
+                    sheets_helper = GoogleSheetsHelper(
+                        credentials_path="cat-heroes-443916-c29b27de5dae.json",
+                        spreadsheet_name="Loot Tracker",
+                    )
+                    await process_loot_message(message, res, sheets_helper)
 
 
-@bot.slash_command(description="Get a user's loot", guild_ids=[TESTING_GUILD_ID])
+@bot.slash_command(description="Start a new loot week", guild_ids=TESTING_GUILD_ID)
+async def start_new_week(interaction: nextcord.Interaction):
+    week_id = loot_tracker.start_new_week_id()
+    await interaction.response.send_message(
+        f"New week has been started. It is week **{week_id}** now"
+    )
+
+
+@bot.slash_command(description="Get a user's loot", guild_ids=TESTING_GUILD_ID)
 async def user_loot(
     interaction: nextcord.Interaction,
     member: nextcord.Member,
-    cycle_id: Optional[int] = None,
+    week: Optional[int] = None,
 ):
     user = User(username=member.name, discord_id=member.id)
     try:
-        loots = loot_tracker.get_user_loot(user, cycle_id=cycle_id)
+        loots = loot_tracker.get_user_loot(user, cycle_id=week)
         if not loots:
             await interaction.response.send_message(
                 f"No loot found for user {member.mention}."
@@ -174,10 +180,10 @@ async def user_loot(
             for item, quantity in combined_loots.items()
         ]
 
-        week_statement = f"on week **{cycle_id}**"
+        week_statement = f"on week **{week}**"
         table = format_loot_table_for_user(member.name, combined_loot_list)
         await interaction.response.send_message(
-            f"Loot for {member.mention} {week_statement if cycle_id else ""}:\n\n{table}"
+            f"Loot for {member.mention} {week_statement if week else ""}:\n\n{table}"
         )
     except Exception as e:
         await interaction.response.send_message(f"Error: {e}")

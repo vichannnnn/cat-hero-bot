@@ -14,6 +14,13 @@ class LootTrackerDB:
         cursor = self.conn.cursor()
 
         cursor.execute("""
+                CREATE TABLE IF NOT EXISTS cycles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    cycle_id INTEGER NOT NULL
+                )
+            """)
+
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL,
@@ -48,9 +55,14 @@ class LootTrackerDB:
             )
         """)
 
+        cursor.execute("""
+                INSERT OR IGNORE INTO cycles (id, cycle_id)
+                VALUES (1, 1)
+            """)
+
         self.conn.commit()
 
-    def start_new_cycle(self) -> int:
+    def start_new_week_id(self) -> int:
         cursor = self.conn.cursor()
 
         cursor.execute("""
@@ -66,7 +78,7 @@ class LootTrackerDB:
         self.conn.commit()
         return new_cycle_id
 
-    def get_current_cycle(self) -> int:
+    def get_current_week(self) -> int:
         cursor = self.conn.cursor()
         cursor.execute("""
             SELECT cycle_id FROM cycles WHERE id = 1
@@ -159,7 +171,7 @@ class LootTrackerDB:
         for participant in participants:
             results[participant.discord_id] = {
                 "username": participant.username,
-                "cycle_id": self.get_current_cycle(),
+                "cycle_id": self.get_current_week(),
                 "loots": [],
             }
 
