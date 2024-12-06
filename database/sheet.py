@@ -23,6 +23,24 @@ class GoogleSheetsHelper:
         self, cycle_id: int, user_participants: list[User], loots: list[Loot]
     ):
         worksheet = self.add_cycle_subsheet(cycle_id)
-        for participant in user_participants:
-            for loot in loots:
-                worksheet.append_row([participant.username, loot.item, loot.quantity])
+
+        if not user_participants or not loots:
+            return
+
+        split_loots = {}
+        for loot in loots:
+            split_quantity = loot.quantity / len(user_participants)
+            for participant in user_participants:
+                if participant.discord_id not in split_loots:
+                    split_loots[participant.discord_id] = {
+                        "username": participant.username,
+                        "loots": [],
+                    }
+                split_loots[participant.discord_id]["loots"].append(
+                    {"item": loot.item, "quantity": split_quantity}
+                )
+
+        for participant_data in split_loots.values():
+            username = participant_data["username"]
+            for loot in participant_data["loots"]:
+                worksheet.append_row([username, loot["item"], loot["quantity"]])
