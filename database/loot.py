@@ -143,11 +143,11 @@ class LootTrackerDB:
         cursor = self.conn.cursor()
 
         query = """
-            SELECT l.item, l.quantity / (
-                SELECT COUNT(*) 
-                FROM participants p 
-                WHERE p.loot_with_participant_id = lw.id
-            ) as split_quantity
+            SELECT l.item, ROUND(l.quantity / (
+            SELECT COUNT(*) 
+            FROM participants p 
+            WHERE p.loot_with_participant_id = lw.id
+        ), 2) as split_quantity
             FROM loot l
             JOIN loot_with_participants lw ON l.id = lw.loot_id
             JOIN participants p ON lw.id = p.loot_with_participant_id
