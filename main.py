@@ -123,7 +123,7 @@ async def on_message(message: nextcord.Message):
     if message.author.bot:
         return
 
-    channels = [1139405184339017761]
+    channels = [1139405184339017761, 1314643337227014285]
     if message.channel.id in channels:
         if message.attachments:
             for attachment in message.attachments:
