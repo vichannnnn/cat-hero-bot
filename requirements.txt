@@ -1,0 +1,8 @@
+openai
+requests
+nextcord
+python-dotenv
+pydantic
+setuptools
+gspread
+oauth2client
