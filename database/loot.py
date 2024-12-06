@@ -142,8 +142,10 @@ class LootTrackerDB:
     def get_user_loot(self, user: User, cycle_id: int = None) -> List[Loot]:
         cursor = self.conn.cursor()
 
+        # Ticket only for now
+
         query = """
-            SELECT l.item, ROUND(l.quantity / (
+            SELECT l.item, ROUND(CAST(l.quantity AS REAL) / (
             SELECT COUNT(*) 
             FROM participants p 
             WHERE p.loot_with_participant_id = lw.id
@@ -152,8 +154,9 @@ class LootTrackerDB:
             JOIN loot_with_participants lw ON l.id = lw.loot_id
             JOIN participants p ON lw.id = p.loot_with_participant_id
             WHERE p.user_id = (SELECT id FROM users WHERE discord_id = ?)
+              AND l.item LIKE ?
         """
-        params = [user.discord_id]
+        params = [user.discord_id, '%Ticket%']  # Filter for items containing "Ticket"
         if cycle_id:
             query += " AND lw.cycle_id = ?"
             params.append(cycle_id)
