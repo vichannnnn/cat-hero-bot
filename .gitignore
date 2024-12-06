@@ -2,3 +2,4 @@
 *.pem
 *.json
 .idea/
+*/__pycache__
