@@ -145,7 +145,12 @@ class LootTrackerDB:
         # Ticket only for now
 
         query = """
-            SELECT l.item, ROUND(CAST(l.quantity AS REAL) / (
+            SELECT 
+                CASE
+                    WHEN l.item LIKE 'Pickup Companion Ticket%' THEN 'Pickup Ticket'
+                    ELSE l.item
+            END AS item_name,
+            ROUND(CAST(l.quantity AS REAL) / (
             SELECT COUNT(*) 
             FROM participants p 
             WHERE p.loot_with_participant_id = lw.id
@@ -156,7 +161,7 @@ class LootTrackerDB:
             WHERE p.user_id = (SELECT id FROM users WHERE discord_id = ?)
               AND l.item LIKE ?
         """
-        params = [user.discord_id, '%Ticket%']  # Filter for items containing "Ticket"
+        params = [user.discord_id, "%Ticket%"]  # Filter for items containing "Ticket"
         if cycle_id:
             query += " AND lw.cycle_id = ?"
             params.append(cycle_id)
